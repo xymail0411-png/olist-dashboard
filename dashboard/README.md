@@ -4,7 +4,7 @@
 
 ## 在线访问
 
-部署到 GitHub Pages 后访问：`https://<你的用户名>.github.io/<仓库名>/dashboard/`
+部署到 GitHub Pages 后访问：`https://<你的用户名>.github.io/<仓库名>/dashboard/`或者直接访问：https://xymail0411-png.github.io/olist-dashboard/dashboard/
 
 ## 本地运行
 
