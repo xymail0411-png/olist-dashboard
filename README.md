@@ -17,7 +17,8 @@
 
 ## 在线交互仪表盘
 
-部署到 GitHub Pages 后访问：`https://<你的用户名>.github.io/<仓库名>/dashboard/`
+法一：部署到 GitHub Pages 后访问：`https://<你的用户名>.github.io/<仓库名>/dashboard/`
+法二：直接访问：https://xymail0411-png.github.io/olist-dashboard/dashboard/
 
 单文件 HTML + ECharts，6 个页面完整叙事：项目概览 → 经营总览 → 客户分层 → 为什么只买一次 → 预测模型 → 决策建议。
 
