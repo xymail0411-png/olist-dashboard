@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Olist 电商经营分析仪表盘</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background:#f0f2f5; color:#333; }
+
+/* Layout */
+.sidebar { position:fixed; left:0; top:0; bottom:0; width:220px; background:#1a2332; padding:24px 0; overflow-y:auto; z-index:100; }
+.sidebar .logo { color:#fff; font-size:16px; font-weight:700; padding:0 24px 20px; border-bottom:1px solid #2a3a4f; margin-bottom:16px; }
+.sidebar .logo small { display:block; font-size:11px; color:#8a9bb5; font-weight:400; margin-top:4px; }
+.nav-item { display:block; padding:11px 24px; color:#8a9bb5; text-decoration:none; font-size:13px; cursor:pointer; border-left:3px solid transparent; transition:all .2s; }
+.nav-item:hover { color:#fff; background:#243447; }
+.nav-item.active { color:#fff; background:#243447; border-left-color:#4a9eff; }
+.nav-item .num { display:inline-block; width:20px; height:20px; line-height:20px; text-align:center; background:#2a3a4f; border-radius:4px; font-size:11px; margin-right:8px; }
+.nav-item.active .num { background:#4a9eff; }
+
+.main { margin-left:220px; padding:24px 32px; max-width:1400px; }
+
+/* KPI cards */
+.kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+.kpi-card { background:#fff; border-radius:8px; padding:18px 20px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+.kpi-card .label { font-size:12px; color:#888; margin-bottom:6px; }
+.kpi-card .value { font-size:26px; font-weight:700; color:#1a2332; }
+.kpi-card .sub { font-size:11px; color:#999; margin-top:4px; }
+.kpi-card.warn .value { color:#e74c3c; }
+
+/* Section */
+.section { display:none; }
+.section.active { display:block; }
+.section-title { font-size:20px; font-weight:700; color:#1a2332; margin-bottom:4px; }
+.section-sub { font-size:13px; color:#888; margin-bottom:20px; }
+
+/* Chart grid */
+.chart-row { display:grid; gap:16px; margin-bottom:16px; }
+.chart-row.cols-2 { grid-template-columns:1fr 1fr; }
+.chart-row.cols-3 { grid-template-columns:1fr 1fr 1fr; }
+.chart-box { background:#fff; border-radius:8px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+.chart-box h3 { font-size:14px; font-weight:600; color:#333; margin-bottom:4px; }
+.chart-box .desc { font-size:11px; color:#999; margin-bottom:8px; }
+.chart { width:100%; height:320px; }
+.chart.tall { height:400px; }
+
+/* Insight box */
+.insight { background:#eef5ff; border-left:4px solid #4a9eff; padding:12px 16px; border-radius:0 6px 6px 0; margin:12px 0; font-size:13px; line-height:1.7; }
+.insight.warn { background:#fff5f0; border-left-color:#e74c3c; }
+.insight.good { background:#f0fff4; border-left-color:#27ae60; }
+.insight strong { color:#1a2332; }
+
+/* Table */
+table.data { width:100%; border-collapse:collapse; font-size:13px; }
+table.data th { background:#f5f7fa; padding:10px 12px; text-align:left; font-weight:600; color:#555; border-bottom:2px solid #e8e8e8; }
+table.data td { padding:10px 12px; border-bottom:1px solid #f0f0f0; }
+table.data tr:hover td { background:#fafbfc; }
+.badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+.badge.p0 { background:#ffe0e0; color:#c0392b; }
+.badge.p1 { background:#fff3d6; color:#d68910; }
+.badge.p2 { background:#e8f5e9; color:#27ae60; }
+
+/* Hero */
+.hero { background:linear-gradient(135deg,#1a2332 0%,#2c3e50 100%); border-radius:12px; padding:40px; color:#fff; margin-bottom:24px; }
+.hero h1 { font-size:28px; margin-bottom:12px; }
+.hero p { font-size:14px; color:#aabbcc; line-height:1.8; max-width:700px; }
+.hero .big-nums { display:flex; gap:40px; margin-top:24px; }
+.hero .big-num .n { font-size:32px; font-weight:700; color:#4a9eff; }
+.hero .big-num .l { font-size:12px; color:#8a9bb5; }
+
+/* Flow steps */
+.flow { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:20px 0; }
+.flow-step { background:#fff; border-radius:8px; padding:18px; border-top:4px solid #4a9eff; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+.flow-step .layer { font-size:11px; color:#4a9eff; font-weight:700; letter-spacing:1px; }
+.flow-step h4 { font-size:15px; margin:6px 0 8px; color:#1a2332; }
+.flow-step p { font-size:12px; color:#666; line-height:1.6; }
+.flow-step .result { margin-top:10px; padding-top:10px; border-top:1px solid #f0f0f0; font-size:11px; color:#27ae60; font-weight:600; line-height:1.5; }
+.flow-step:nth-child(2){border-top-color:#f39c12;} .flow-step:nth-child(2) .layer{color:#f39c12;}
+.flow-step:nth-child(3){border-top-color:#9b59b6;} .flow-step:nth-child(3) .layer{color:#9b59b6;}
+.flow-step:nth-child(4){border-top-color:#e74c3c;} .flow-step:nth-child(4) .layer{color:#e74c3c;}
+.tech-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.tech-tag { background:#f0f4ff; color:#4a9eff; padding:4px 12px; border-radius:14px; font-size:12px; font-weight:500; }
+.h-tag { display:inline-block; background:#9b59b6; color:#fff; padding:1px 8px; border-radius:4px; font-size:10px; font-weight:700; margin-right:6px; }
+
+@media(max-width:1100px){ .chart-row.cols-2,.chart-row.cols-3{grid-template-columns:1fr;} .kpi-row{grid-template-columns:repeat(2,1fr);} .flow{grid-template-columns:1fr 1fr;} }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo">Olist 经营分析<small>巴西电商 · 2017-01 ~ 2018-08</small></div>
+  <a class="nav-item active" data-sec="intro"><span class="num">0</span>项目概览</a>
+  <a class="nav-item" data-sec="overview"><span class="num">1</span>经营总览</a>
+  <a class="nav-item" data-sec="rfm"><span class="num">2</span>客户价值分层</a>
+  <a class="nav-item" data-sec="diagnosis"><span class="num">3</span>为什么只买一次</a>
+  <a class="nav-item" data-sec="model"><span class="num">4</span>复购预测模型</a>
+  <a class="nav-item" data-sec="decision"><span class="num">5</span>决策建议</a>
+</div>
+
+<div class="main">
+
+<!-- ========== 0. 项目概览 ========== -->
+<div class="section active" id="sec-intro">
+  <div class="hero">
+    <h1>Olist 巴西电商经营分析</h1>
+    <p>基于 Olist 公开数据集（2017-01 ~ 2018-08，9.6 万订单、9 张关系表），回答一个业务问题：<strong style="color:#fff">平台 97% 的客户只买一次，收入靠新客驱动——运营资源该投"拉新"还是"留旧"？投给谁、怎么投？</strong></p>
+    <div class="big-nums">
+      <div class="big-num"><div class="n">96,211</div><div class="l">有效订单</div></div>
+      <div class="big-num"><div class="n">93,104</div><div class="l">客户</div></div>
+      <div class="big-num"><div class="n">9 张表</div><div class="l">订单/支付/评论/物流</div></div>
+      <div class="big-num"><div class="n">4 层</div><div class="l">分析逻辑链</div></div>
+    </div>
+  </div>
+
+  <div class="section-title">分析流程：描述 → 诊断 → 预测 → 处方</div>
+  <div class="section-sub">每一层回答一个问题，后一层建立在前一层的结论之上</div>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="layer">① 描述层</div>
+      <h4>客户价值结构</h4>
+      <p><b>方法：</b>两阶段 RFM 分层（先切单次/复购，再层内分类）<br><b>数据：</b>9.3 万客户的 R/F/M 三维度</p>
+      <div class="result">发现：48.5% 高价值单次客贡献 76% GMV，复购率仅 3%</div>
+    </div>
+    <div class="flow-step">
+      <div class="layer">② 诊断层</div>
+      <h4>为什么不复购</h4>
+      <p><b>方法：</b>6 个假设检验（H1 画像差异 / H6 体验→复购 / H4-H5 履约归因 / H2 大促 / H3 品类量价）<br><b>方法：</b>Mann-Whitney U + 卡方 + 效应量</p>
+      <div class="result">发现：超时让评分暴跌（4.29→2.46），但不影响复购率——复购低是结构问题，不是体验问题</div>
+    </div>
+    <div class="flow-step">
+      <div class="layer">③ 预测层</div>
+      <h4>谁会复购</h4>
+      <p><b>方法：</b>首单特征训练分类模型（LR + LightGBM），规避数据泄漏<br><b>评估：</b>AUC / PR-AUC / Top-K 命中率</p>
+      <div class="result">发现：AUC≈0.62（弱可学），Top10% 可抓 17% 复购——精准小池可行，全量投放不行</div>
+    </div>
+    <div class="flow-step">
+      <div class="layer">④ 处方层</div>
+      <h4>钱怎么投</h4>
+      <p><b>方法：</b>基于前三层证据做预算分配 + 分人群运营动作<br><b>产出：</b>留旧池 ROI 监控指标</p>
+      <div class="result">结论：主投拉新（80%），留旧设独立小池（20%）只投 Top10% 高潜客户</div>
+    </div>
+  </div>
+
+  <div class="chart-row cols-2">
+    <div class="chart-box">
+      <h3>技术栈与工具</h3>
+      <div class="desc">从数据入库到可视化交付</div>
+      <div style="padding:8px 0;">
+        <div class="tech-row">
+          <span class="tech-tag">Python / pandas</span>
+          <span class="tech-tag">scikit-learn</span>
+          <span class="tech-tag">LightGBM</span>
+          <span class="tech-tag">MySQL</span>
+          <span class="tech-tag">ECharts</span>
+          <span class="tech-tag">Tableau</span>
+          <span class="tech-tag">Mann-Whitney U</span>
+          <span class="tech-tag">卡方检验</span>
+          <span class="tech-tag">特征重要性</span>
+        </div>
+      </div>
+    </div>
+    <div class="chart-box">
+      <h3>数据治理要点</h3>
+      <div class="desc">从原始 CSV 到分析宽表</div>
+      <div style="padding:8px 0; font-size:13px; line-height:2;">
+        <p>✓ 有效订单 = delivered，剔除取消/不可送达</p>
+        <p>✓ 用户口径 = customer_unique_id（一人多单去重）</p>
+        <p>✓ GMV = price + freight，不用 payments 避免重复计</p>
+        <p>✓ review_id 重复（814 条）用复合主键处理</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="insight">
+    <strong>这个项目展示了什么：</strong>不是跑一遍流程，而是用"假设→验证→修正"的方式做分析——从 EDA 发现复购率 3% 这个反常事实出发，逐层追问"为什么"，最终用数据回答"钱该怎么投"。每一步的结论都直接影响下一步的方法选择。
+  </div>
+</div>
+
+<!-- ========== 1. 经营总览 ========== -->
+<div class="section" id="sec-overview">
+  <div class="hero">
+    <h1>Olist 经营健康度诊断</h1>
+    <p>平台 97% 的客户两年内只下单一次（复购率 3.0%），收入高度依赖新客首单。本仪表盘从经营总览、客户分层、流失诊断、预测模型到决策建议，回答一个核心问题：<strong style="color:#fff">运营资源该投"拉新"还是"留旧"？</strong></p>
+    <div class="big-nums">
+      <div class="big-num"><div class="n">R$15.4M</div><div class="l">总 GMV</div></div>
+      <div class="big-num"><div class="n">93,104</div><div class="l">客户数</div></div>
+      <div class="big-num"><div class="n">3.0%</div><div class="l">复购率</div></div>
+      <div class="big-num"><div class="n">7.6%</div><div class="l">订单超时率</div></div>
+    </div>
+  </div>
+
+  <div class="kpi-row" id="kpiRow"></div>
+
+  <div class="chart-row cols-2">
+    <div class="chart-box">
+      <h3>月度 GMV 与订单量趋势</h3>
+      <div class="desc">柱状=GMV（左轴），折线=订单量（右轴）</div>
+      <div id="ch_monthly" class="chart tall"></div>
+    </div>
+    <div class="chart-box">
+      <h3>Top 10 品类 GMV 贡献</h3>
+      <div class="desc">按成交额排序</div>
+      <div id="ch_cats" class="chart tall"></div>
+    </div>
+  </div>
+
+  <div class="chart-row cols-2">
+    <div class="chart-box">
+      <h3>各州订单分布</h3>
+      <div class="desc">巴西 27 州，东南部（SP/RJ/MG）集中</div>
+      <div id="ch_states" class="chart"></div>
+    </div>
+    <div class="chart-box">
+      <h3>支付方式占比</h3>
+      <div class="desc">信用卡为主，boleto 为辅</div>
+      <div id="ch_payment" class="chart"></div>
+    </div>
+  </div>
+  <div class="insight">
+    <strong>用户画像：</strong>9.3 万客户，68% 在东南部（SP/RJ/MG），78% 用信用卡，客单价中位数 R$100-150，最爱买床品/美妆/电脑配件，97% 只买一次。
+  </div>
+  <div class="chart-row cols-2">
+    <div class="chart-box">
+      <h3>用户地理分布</h3>
+      <div class="desc">按大区汇总，东南部占 68%</div>
+      <div id="ch_geo" class="chart"></div>
+    </div>
+    <div class="chart-box">
+      <h3>用户客单价分布</h3>
+      <div class="desc">大部分订单在 R$50-150，长尾高价订单少</div>
+      <div id="ch_aov" class="chart"></div>
+    </div>
+  </div>
+  <div class="chart-row cols-2">
+    <div class="chart-box">
+      <h3>品类偏好：单次客 vs 复购客</h3>
+      <div class="desc">复购客在 bed bath / health beauty 品类更集中</div>
+      <div id="ch_cat_pref" class="chart"></div>
+    </div>
+    <div class="chart-box">
+      <h3>用户行为关键词</h3>
+      <div class="desc">核心特征一览</div>
+      <div style="padding:16px;font-size:13px;line-height:2.2;">
+        <p><b>地理位置：</b>东南部为主（圣保罗州占 43%）</p>
+        <p><b>支付方式：</b>信用卡 78%，boleto 19%</p>
+        <p><b>客单价：</b>中位数 R$100-150，均值 R$160</p>
+        <p><b>复购率：</b>仅 3%，97% 客户只买一次</p>
+        <p><b>超时率：</b>7.6%，东北部州高达 20%+</p>
+        <p><b>平均评分：</b>4.16/5，超时单仅 2.46 分</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 2. 客户价值分层 ========== -->
+<div class="section" id="sec-rfm">
+  <div class="section-title">客户价值分层</div>
+  <div class="section-sub">两阶段 RFM：先切单次/复购，再各层内部分类</div>
+
+  <div class="insight">
+    <strong>方法说明：</strong>经典 RFM 用中位数对 R/F/M 三分量切高低，但 F（购买频次）97% 集中在 1 单（地板效应），中位数切不开。因此改为两阶段：先按 F=1 vs F≥2 切单次/复购，再在单次层用 R×M、复购层用 R×F×M 分别分层。
+  </div>
+
+  <div class="chart-row cols-2">
+    <div class="chart-box">
+      <h3>单次层 4 类：客户占比 vs GMV 占比</h3>
+      <div class="desc">97% 客户在此层；高额两类贡献 80% GMV</div>
+      <div id="ch_rfm_single" class="chart tall"></div>
+    </div>
+    <div class="chart-box">
+      <h3>复购层 8 类：客户占比 vs GMV 占比</h3>
+      <div class="desc">3% 客户在此层；重要发展+挽留贡献 64%</div>
+      <div id="ch_rfm_repeat" class="chart tall"></div>
+    </div>
+  </div>
+
+  <div class="chart-row cols-2">
+    <div class="chart-box">
+      <h3><span class="h-tag">H1</span>复购客 vs 单次客画像对比</h3>
+      <div class="desc">品类多样性是唯一显著差异</div>
+      <div id="ch_profile" class="chart"></div>
+    </div>
+    <div class="chart-box">
+      <h3>月度 GMV 构成：新客首单 vs 老客复购</h3>
+      <div class="desc">双轴图：新客GMV是复购GMV的30倍</div>
+      <div id="ch_growth" class="chart"></div>
+    </div>
+  </div>
+
+  <div class="insight good">
+    <strong>核心发现：</strong>48.5% 的高价值单次客（高潜新客+高价值唤醒）贡献了 80% 的 GMV。其中高潜新客（近期活跃、高额、仅一次购买）是复购转化的首选目标人群；高价值唤醒（沉睡但高额）是最大流失风险。
+  </div>
+</div>
+
+<!-- ========== 3. 诊断 ========== -->
+<div class="section" id="sec-diagnosis">
+  <div class="section-title">为什么 97% 的客户只买一次？</div>
+  <div class="section-sub">结构说 vs 体验说：是市场使然，还是履约问题？</div>
+
+  <div class="chart-row cols-2">
+    <div class="chart-box">
+      <h3><span class="h-tag">H6</span>体验→满意：超时订单评分暴跌</h3>
+      <div class="desc">准时单平均 4.29 分，超时单仅 2.46 分</div>
+      <div id="ch_h6_score" class="chart"></div>
+    </div>
+    <div class="chart-box">
+      <h3>满意→复购：评分高低几乎不影响复购率</h3>
+      <div class="desc">低分/中分/高分客户复购率 2.8%~3.1%，无差异</div>
+      <div id="ch_h6_repeat" class="chart"></div>
+    </div>
+  </div>
+
+  <div class="insight warn">
+    <strong>关键结论：</strong>超时确实让客户不满（评分从 4.29 跌到 2.46），但不满并不导致不复购——高/中/低分客户的复购率都在 3% 左右。这说明复购率低是<strong>结构性问题</strong>（巴西电商市场特征），而非履约体验问题。改善履约是防守项，不是复购增长杠杆。
+  </div>
+
+  <div class="chart-row cols-2">
+    <div class="chart-box">
+      <h3><span class="h-tag">H2</span>黑五大促 vs 日常订单质量</h3>
+      <div class="desc">客单价无差异，但超时率翻倍、评分下降——大促以牺牲履约质量换量</div>
+      <div id="ch_h2" class="chart"></div>
+    </div>
+    <div class="chart-box">
+      <h3><span class="h-tag">H4/H5</span>超时高发州：履约问题在哪</h3>
+      <div class="desc">东北部州超时率高（AL 23%），东南部 SP 仅 4.5%</div>
+      <div id="ch_h4h5" class="chart"></div>
+    </div>
+  </div>
+  <div class="chart-row cols-2">
+    <div class="chart-box">
+      <h3><span class="h-tag">H3</span>品类量价矩阵</h3>
+      <div class="desc">点=品类，横轴=订单量，纵轴=客单价；深色=高GMV品类；虚线=中位数分界线</div>
+      <div id="ch_h3" class="chart"></div>
+    </div>
+    <div class="chart-box">
+      <h3><span class="h-tag">H1</span>复购客画像：跨品类是关键差异</h3>
+      <div class="desc">复购客平均买 1.62 个品类，单次客仅 1.01 个</div>
+      <div id="ch_h1_cat" class="chart"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 4. 预测模型 ========== -->
+<div class="section" id="sec-model">
+  <div class="section-title">复购预测模型</div>
+  <div class="section-sub">用首购时刻可得的信息预测谁会复购（规避数据泄漏）</div>
+
+  <div class="chart-row cols-2">
+    <div class="chart-box">
+      <h3>模型 AUC 对比</h3>
+      <div class="desc">0.5=随机，0.8+=强预测；当前 0.60~0.62 属弱可学</div>
+      <div id="ch_auc" class="chart"></div>
+    </div>
+    <div class="chart-box">
+      <h3>特征重要性（LightGBM）</h3>
+      <div class="desc">首单金额、配送天数、品类是 Top3 预测因子</div>
+      <div id="ch_importance" class="chart"></div>
+    </div>
+  </div>
+
+  <div class="chart-row cols-2">
+    <div class="chart-box">
+      <h3>Top-K 命中率：取前 X% 客户能抓住多少复购？</h3>
+      <div class="desc">取前 10% 客户可抓 17% 复购（盲投约 10%）</div>
+      <div id="ch_topk" class="chart"></div>
+    </div>
+    <div class="chart-box">
+      <h3>模型结论</h3>
+      <div class="desc">能做什么、不能做什么</div>
+      <div style="padding:20px; font-size:13px; line-height:2;">
+        <p style="margin-bottom:12px;"><strong style="color:#27ae60;">✓ 能做：</strong>对高首单额 + 近期首购 + 配送有问题的客户做精准 30 天窗激励，Top10% 有 1.7 倍提升。</p>
+        <p style="margin-bottom:12px;"><strong style="color:#e74c3c;">✗ 不能做：</strong>AUC 0.62 远低于强预测，无法大规模预测谁会复购。这再次印证"复购是结构性现象"。</p>
+        <p><strong>策略含义：</strong>留旧不应该全量铺开，而应设独立小预算池，只对打分 Top10% 精准投放。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 5. 决策建议 ========== -->
+<div class="section" id="sec-decision">
+  <div class="section-title">决策建议：主投拉新，精准留旧</div>
+  <div class="section-sub">基于描述→诊断→预测的完整证据链</div>
+
+  <div class="chart-row cols-2">
+    <div class="chart-box">
+      <h3>增长预算分配建议</h3>
+      <div class="desc">拉新 80% / 留旧 20%</div>
+      <div id="ch_budget" class="chart"></div>
+    </div>
+    <div class="chart-box">
+      <h3>分人群运营动作与优先级</h3>
+      <div class="desc">留旧池预算分配</div>
+      <table class="data">
+        <thead><tr><th>人群</th><th>规模</th><th>动作</th><th>留旧预算</th><th>优先级</th></tr></thead>
+        <tbody id="segTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="insight good">
+    <strong>最终决策：</strong>主投拉新保增长（新客贡献 97% GMV），留旧设独立小池（不超过增长预算 20%），按 30 天窗打分只投 Top10% 高潜客户。改善履约仅作防守项。监控指标：留旧池 ROI > 1，按月复盘，低于阈值则收缩回到拉新。
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+const D = {
+  kpi: {gmv:15373120, orders:96211, customers:93104, aov:159.8, repeat_rate:3.0, avg_delivery:12.1, late_rate:7.6, avg_score:4.16},
+  monthly: {months:["2017-01","2017-02","2017-03","2017-04","2017-05","2017-06","2017-07","2017-08","2017-09","2017-10","2017-11","2017-12","2018-01","2018-02","2018-03","2018-04","2018-05","2018-06","2018-07","2018-08"],
+    gmv:[127482,271239,414331,390812,566851,490050,566299,645832,701077,751117,1153364,843078,1077887,966168,1120598,1132879,1128775,1011978,1027807,985492],
+    orders:[750,1653,2546,2303,3546,3135,3872,4193,4150,4478,7289,5513,7069,6555,7003,6798,6749,6099,6159,6351]},
+  categories: {names:["bed bath table","health beauty","computers accessories","watches gifts","furniture decor","sports leisure","housewares","auto","garden tools","cool stuff"],
+    gmv:[1689768,1615853,1548394,1384351,1383604,1346856,1066963,832378,809055,743238]},
+  states: {names:["SP","RJ","MG","RS","PR","SC","BA","DF","ES","GO","PE","CE","PA","MT","MA","MS","PB","PI","RN","AL","SE","TO","RO","AM","AC","AP","RR"],
+    values:[40406,12310,11319,5328,4903,3537,3253,2074,1992,1950,1587,1273,942,885,713,701,516,475,470,396,332,274,243,145,80,67,40]},
+  payment: {names:["信用卡","boleto","voucher","借记卡"], values:[12542084,2869361,379437,217990]},
+  rfm_single: {segments:["高潜新客","高价值唤醒","待培育新客","流失观望"],
+    cust_pct:[25.5,24.5,24.7,25.3], gmv_pct:[40.9,39.6,9.5,9.9]},
+  rfm_repeat: {segments:["重要价值","重要发展","重要保持","重要挽留","一般价值","一般发展","一般保持","一般挽留"],
+    cust_pct:[3.7,22.7,2.3,21.3,1.1,22.7,1.0,25.2], gmv_pct:[7.9,32.8,4.4,31.3,0.6,10.7,0.5,11.8]},
+  profile: {metrics:[
+    {name:"平均品类数",single:1.01,repeat:1.62},
+    {name:"客单价(R$)",single:160.7,repeat:308.5},
+    {name:"平均评分",single:4.15,repeat:4.2},
+    {name:"超时率(%)",single:7.7,repeat:6.7},
+    {name:"配送天数",single:12.1,repeat:11.9}]},
+  h6: {on_time_score:4.29, late_score:2.46, bands:["低分(1-2星)","中分(3-4星)","高分(5星)"], band_repeat_rate:[2.81,2.89,3.08]},
+  growth: {months:["2017-01","2017-02","2017-03","2017-04","2017-05","2017-06","2017-07","2017-08","2017-09","2017-10","2017-11","2017-12","2018-01","2018-02","2018-03","2018-04","2018-05","2018-06","2018-07","2018-08"],
+    new_gmv:[124617,267949,409564,383596,551258,477836,550711,624378,679906,730669,1122100,813895,1044573,930421,1087653,1100017,1090355,977890,995892,954380],
+    repeat_gmv:[2866,3290,4767,7216,15593,12214,15588,21454,21171,20448,31264,29183,33315,35747,32945,32862,38420,34089,31915,31112]},
+  h2: {metrics:["客单价(R$)","超时率(%)","平均评分"], bf:[158.2,13.4,3.99], normal:[159.9,7.1,4.17]},
+  h4h5: {states:["AL","MA","SE","PI","CE","BA","RJ","SP"], late_rates:[22.98,18.93,15.36,15.16,14.93,10.5,8.2,4.5]},
+  h3: {cats:["bed bath","health beauty","computer acc.","watches gifts","furniture decor","sports leisure","housewares","auto","garden tools","cool stuff","office furn.","toys","baby","perfumery","telephony"],
+    orders:[10945,9422,7632,5855,8095,8414,6783,4132,4263,3711,1662,4006,2971,3311,4422],
+    aov:[154.4,171.5,202.9,236.4,170.9,160.1,157.3,201.4,189.8,200.3,381.8,149.3,176.3,148.0,106.1],
+    gmv:[1689768,1615853,1548394,1384351,1383604,1346856,1066963,832378,809055,743238,634510,598182,523656,489921,469194]},
+  model: {auc_models:["逻辑回归","LightGBM"], full_period:[0.55,0.60], window30:[0.54,0.62],
+    k:[1,2,3,5,10], gbm_cov:[2.5,4.3,6.2,9.6,17.0], lr_cov:[0.8,2.2,3.2,5.5,10.5],
+    importance:[{name:"首单金额",v:722},{name:"配送天数",v:642},{name:"品类",v:595},{name:"首购月份",v:356},{name:"客户所在州",v:289},{name:"首单评分",v:172},{name:"是否超时",v:24}]},
+  user_dist: {
+    aov_bins: ["R$0-50","R$50-100","R$100-150","R$150-200","R$200-300","R$300-500","R$500+"],
+    aov_counts: [12000,28000,25000,15000,10000,4500,1700]
+  },
+  geo: {
+    region_pie: [
+      {name:"东南部 (SP/RJ/MG/ES)",value:68},
+      {name:"南部 (RS/SC/PR)",value:14},
+      {name:"东北部 (BA/PE/CE/... )",value:14},
+      {name:"其他州",value:4}
+    ]
+  },
+  decision: {budget:[{name:"拉新预算",value:80},{name:"留旧预算",value:20}],
+    segments:[
+      {name:"高潜新客",customers:23028,action:"首购30天内复购券+品类推荐",share:40,pri:"P0"},
+      {name:"高价值唤醒",customers:22122,action:"定向邮件召回+品类补货",share:30,pri:"P0"},
+      {name:"复购层·重要",customers:1418,action:"VIP会员权益+专属客服",share:20,pri:"P1"},
+      {name:"待培育/流失",customers:45165,action:"轻触达+凑单提客单",share:10,pri:"P2"}]}
+};
+
+const C = {blue:"#4a9eff", dark:"#2c3e50", gray:"#c9d0d9", red:"#e74c3c", green:"#27ae60", orange:"#f39c12"};
+
+// ---- nav ----
+document.querySelectorAll(".nav-item").forEach(item=>{
+  item.onclick=()=>{
+    document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
+    document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+    item.classList.add("active");
+    document.getElementById("sec-"+item.dataset.sec).classList.add("active");
+    window.dispatchEvent(new Event("resize"));
+  };
+});
+
+// ---- KPI cards ----
+const kpiHtml = [
+  {l:"总 GMV",v:"R$ "+(D.kpi.gmv/1e6).toFixed(1)+"M",s:"96,211 笔订单"},
+  {l:"客户数",v:D.kpi.customers.toLocaleString(),s:"复购率 "+D.kpi.repeat_rate+"%"},
+  {l:"客单价",v:"R$ "+D.kpi.aov,s:"平均配送 "+D.kpi.avg_delivery+" 天"},
+  {l:"订单超时率",v:D.kpi.late_rate+"%",s:"平均评分 "+D.kpi.avg_score+" 分",warn:true},
+].map(k=>`<div class="kpi-card${k.warn?" warn":""}"><div class="label">${k.l}</div><div class="value">${k.v}</div><div class="sub">${k.s}</div></div>`).join("");
+document.getElementById("kpiRow").innerHTML = kpiHtml;
+
+// ---- charts ----
+function make(id, opt){ const el=document.getElementById(id); if(!el) return; const c=echarts.init(el); c.setOption(opt); window.addEventListener("resize",()=>c.resize()); return c; }
+
+// monthly
+make("ch_monthly",{tooltip:{trigger:"axis"},legend:{data:["GMV","订单量"],top:0,itemStyle:{fontSize:11}},grid:{left:60,right:60,top:35,bottom:45},
+  xAxis:{type:"category",data:D.monthly.months,axisLabel:{rotate:45,fontSize:10}},
+  yAxis:[{type:"value",name:"GMV (R$)",axisLabel:{formatter:function(v){return v>=1e6?(v/1e6).toFixed(1)+"M":v>=1000?(v/1000)+"k":v;}}},{type:"value",name:"订单",axisLabel:{formatter:function(v){return v>=1000?(v/1000)+"k":v;}}}],
+  series:[{name:"GMV",type:"bar",data:D.monthly.gmv,itemStyle:{color:C.blue}},
+    {name:"订单量",type:"line",yAxisIndex:1,data:D.monthly.orders,itemStyle:{color:C.orange}}]});
+
+// categories
+make("ch_cats",{tooltip:{trigger:"axis"},grid:{left:110,right:20},
+  xAxis:{type:"value",axisLabel:{formatter:function(v){return v>=1e6?(v/1e6).toFixed(1)+"M":v>=1000?(v/1000)+"k":v;}}},yAxis:{type:"category",data:[...D.categories.names].reverse(),axisLabel:{fontSize:10}},
+  series:[{type:"bar",data:[...D.categories.gmv].reverse(),itemStyle:{color:C.dark}}]});
+
+// states
+make("ch_states",{tooltip:{trigger:"axis"},grid:{left:60,right:20,bottom:40},
+  xAxis:{type:"category",data:D.states.names,axisLabel:{fontSize:9,rotate:45}},
+  yAxis:{type:"value",axisLabel:{formatter:function(v){return v>=1000?(v/1000)+"k":v;}}},series:[{type:"bar",data:D.states.values,itemStyle:{color:C.blue}}]});
+
+// payment
+make("ch_payment",{tooltip:{trigger:"item"},legend:{bottom:0},
+  series:[{type:"pie",radius:["40%","70%"],data:D.payment.names.map((n,i)=>({name:n,value:D.payment.values[i]})),
+    label:{formatter:"{b}\n{d}%"}}]});
+
+// RFM single
+make("ch_rfm_single",{tooltip:{trigger:"axis"},legend:{data:["客户占比%","GMV占比%"],bottom:0},
+  xAxis:{type:"category",data:D.rfm_single.segments},
+  yAxis:{type:"value",name:"%"},
+  series:[
+    {name:"客户占比%",type:"bar",data:D.rfm_single.cust_pct,itemStyle:{color:C.gray}},
+    {name:"GMV占比%",type:"bar",data:D.rfm_single.gmv_pct,itemStyle:{color:C.blue}}]});
+
+// RFM repeat
+make("ch_rfm_repeat",{tooltip:{trigger:"axis"},legend:{data:["客户占比%","GMV占比%"],bottom:0},
+  xAxis:{type:"category",data:D.rfm_repeat.segments,axisLabel:{rotate:30,fontSize:10}},
+  yAxis:{type:"value",name:"%"},
+  series:[
+    {name:"客户占比%",type:"bar",data:D.rfm_repeat.cust_pct,itemStyle:{color:C.gray}},
+    {name:"GMV占比%",type:"bar",data:D.rfm_repeat.gmv_pct,itemStyle:{color:C.dark}}]});
+
+// profile
+make("ch_profile",{tooltip:{trigger:"axis"},legend:{data:["单次客","复购客"],bottom:0},
+  grid:{left:50,right:20,top:30,bottom:40},
+  xAxis:{type:"category",data:["平均品类数（个）","客单价（R$）"],axisLabel:{fontSize:12}},
+  yAxis:[{type:"value",name:"品类数",position:"left",max:2},
+         {type:"value",name:"客单价 R$",position:"right",max:400}],
+  series:[
+    {name:"单次客",type:"bar",data:[1.01,null],itemStyle:{color:C.gray},label:{show:true,position:"top",formatter:"{c}"}},
+    {name:"复购客",type:"bar",data:[1.62,null],itemStyle:{color:C.blue},label:{show:true,position:"top",formatter:"{c}"}},
+    {name:"单次客",type:"bar",yAxisIndex:1,data:[null,160.7],itemStyle:{color:C.gray},label:{show:true,position:"top",formatter:"R${c}"}},
+    {name:"复购客",type:"bar",yAxisIndex:1,data:[null,308.5],itemStyle:{color:C.blue},label:{show:true,position:"top",formatter:"R${c}"}}
+  ]});
+
+// GROWTH: dual-axis (bar=new GMV left, line=repeat GMV right)
+make("ch_growth",{tooltip:{trigger:"axis"},legend:{data:["新客首单GMV","老客复购GMV"],top:0,itemStyle:{fontSize:11}},grid:{left:60,right:60,top:35,bottom:45},
+  xAxis:{type:"category",data:D.growth.months,axisLabel:{rotate:45,fontSize:9}},
+  yAxis:[{type:"value",name:"新客GMV (R$)",axisLabel:{formatter:function(v){return v>=1e6?(v/1e6).toFixed(1)+"M":v>=1000?(v/1000)+"k":v;}}},{type:"value",name:"复购GMV (R$)",axisLabel:{formatter:function(v){return v>=1000?(v/1000)+"k":v;}}}],
+  series:[
+    {name:"新客首单GMV",type:"bar",data:D.growth.new_gmv,itemStyle:{color:C.blue,opacity:0.7}},
+    {name:"老客复购GMV",type:"line",yAxisIndex:1,data:D.growth.repeat_gmv,itemStyle:{color:C.orange},lineStyle:{width:3},symbol:"circle",symbolSize:6}
+  ]});
+
+// H6 score
+make("ch_h6_score",{tooltip:{trigger:"axis"},
+  xAxis:{type:"category",data:["准时订单","超时订单"]},
+  yAxis:{type:"value",min:0,max:5,name:"平均评分"},
+  series:[{type:"bar",barWidth:"40%",data:[
+    {value:4.29,itemStyle:{color:C.green}},
+    {value:2.46,itemStyle:{color:C.red}}],
+    label:{show:true,position:"top",formatter:"{c} 分"}}]});
+
+// H6 repeat rate by band
+make("ch_h6_repeat",{tooltip:{trigger:"axis"},
+  xAxis:{type:"category",data:D.h6.bands},
+  yAxis:{type:"value",name:"复购率 %",min:0,max:5},
+  series:[{type:"bar",barWidth:"40%",data:D.h6.band_repeat_rate,
+    itemStyle:{color:C.blue},label:{show:true,position:"top",formatter:"{c}%"}}]});
+
+// H2: 3 mini panels, each metric on its own scale
+make("ch_h2",{tooltip:{trigger:"axis"},
+  title:[
+    {text:"客单价 R$",subtext:"黑五158 vs 日常160",left:"14%",top:0,textStyle:{fontSize:13},subtextStyle:{fontSize:11,color:"#666"}},
+    {text:"超时率 %",subtext:"黑五13.4 vs 日常7.1",left:"48%",top:0,textStyle:{fontSize:13},subtextStyle:{fontSize:11,color:"#e74c3c"}},
+    {text:"平均评分",subtext:"黑五4.0 vs 日常4.2",left:"82%",top:0,textStyle:{fontSize:13},subtextStyle:{fontSize:11,color:"#666"}}
+  ],
+  grid:[
+    {left:"8%",width:"22%",top:50,bottom:30},
+    {left:"42%",width:"22%",top:50,bottom:30},
+    {left:"76%",width:"22%",top:50,bottom:30}
+  ],
+  xAxis:[
+    {gridIndex:0,type:"category",data:["黑五","日常"],axisLabel:{fontSize:11}},
+    {gridIndex:1,type:"category",data:["黑五","日常"],axisLabel:{fontSize:11}},
+    {gridIndex:2,type:"category",data:["黑五","日常"],axisLabel:{fontSize:11}}
+  ],
+  yAxis:[
+    {gridIndex:0,type:"value",min:150,max:165,axisLabel:{fontSize:9}},
+    {gridIndex:1,type:"value",min:0,max:16,axisLabel:{fontSize:9}},
+    {gridIndex:2,type:"value",min:3.5,max:4.5,axisLabel:{fontSize:9}}
+  ],
+  series:[
+    {name:"黑五",type:"bar",data:[158.2,null],itemStyle:{color:C.red},label:{show:true,position:"top",fontSize:10}},
+    {name:"日常",type:"bar",data:[null,159.9],itemStyle:{color:C.gray},label:{show:true,position:"top",fontSize:10}},
+    {name:"黑五",type:"bar",xAxisIndex:1,yAxisIndex:1,data:[13.4,null],itemStyle:{color:C.red},label:{show:true,position:"top",fontSize:10}},
+    {name:"日常",type:"bar",xAxisIndex:1,yAxisIndex:1,data:[null,7.1],itemStyle:{color:C.gray},label:{show:true,position:"top",fontSize:10}},
+    {name:"黑五",type:"bar",xAxisIndex:2,yAxisIndex:2,data:[3.99,null],itemStyle:{color:C.red},label:{show:true,position:"top",fontSize:10}},
+    {name:"日常",type:"bar",xAxisIndex:2,yAxisIndex:2,data:[null,4.17],itemStyle:{color:C.gray},label:{show:true,position:"top",fontSize:10}}
+  ]});
+
+// H4/H5: late rate by state
+make("ch_h4h5",{tooltip:{trigger:"axis"},
+  xAxis:{type:"category",data:D.h4h5.states,axisLabel:{fontSize:11}},
+  yAxis:{type:"value",name:"超时率 %",max:25},
+  series:[{type:"bar",barWidth:"50%",data:D.h4h5.late_rates,
+    itemStyle:{color:function(p){return p.value>12?C.red:p.value>8?C.orange:C.green;}},
+    label:{show:true,position:"top",formatter:"{c}%",fontSize:10}}]});
+
+// H1: category diversity - clean comparison
+make("ch_h1_cat",{tooltip:{trigger:"axis"},legend:{data:["单次客(93k人)","复购客(2.8k人)"],bottom:0},
+  xAxis:{type:"category",data:["平均购买品类数","Top1品类集中度"],axisLabel:{fontSize:12}},
+  yAxis:[
+    {type:"value",name:"品类数",max:2},
+    {type:"value",name:"集中度",max:1,axisLabel:{formatter:function(v){return v*100+"%";}}}
+  ],
+  series:[
+    {name:"单次客(93k人)",type:"bar",data:[1.01,null],itemStyle:{color:C.gray},label:{show:true,position:"top",formatter:"{c} 个"}},
+    {name:"复购客(2.8k人)",type:"bar",data:[1.62,null],itemStyle:{color:C.blue},label:{show:true,position:"top",formatter:"{c} 个"}},
+    {name:"单次客(93k人)",type:"bar",yAxisIndex:1,data:[null,1.00],itemStyle:{color:C.gray},label:{show:true,position:"top",formatter:"100%"}},
+    {name:"复购客(2.8k人)",type:"bar",yAxisIndex:1,data:[null,0.74],itemStyle:{color:C.blue},label:{show:true,position:"top",formatter:"74%"}}
+  ]});
+
+// H3: category volume-price scatter with quadrant lines
+make("ch_h3",{tooltip:{trigger:"item",formatter:p=>`<b>${p.data[3]}</b><br/>订单量: ${p.data[0].toLocaleString()} 单<br/>客单价: R$${p.data[1]}<br/>GMV: R$${(p.data[2]/1e6).toFixed(2)}M`},
+  xAxis:{type:"value",name:"订单量（单）",nameLocation:"middle",nameGap:25,
+    splitLine:{lineStyle:{type:"dashed"}},
+    axisLabel:{formatter:function(v){return v>=1000?(v/1000)+"k":v;}}},
+  yAxis:{type:"value",name:"客单价（R$）",nameLocation:"middle",nameGap:45,
+    splitLine:{lineStyle:{type:"dashed"}}},
+  series:[{type:"scatter",
+    symbolSize:14,
+    data:D.h3.cats.map((c,i)=>[D.h3.orders[i],D.h3.aov[i],D.h3.gmv[i],c]),
+    itemStyle:{color:function(p){
+      // color by GMV tier: top3=dark, mid=blue, low=light
+      return p.data[2] > 1.3e6 ? C.dark : p.data[2] > 7e5 ? C.blue : C.gray;
+    },opacity:0.8},
+    label:{show:true,formatter:function(p){return p.data[3];},position:"right",fontSize:10,color:"#555"},
+    markLine:{silent:true,symbol:"none",lineStyle:{type:"dashed",color:"#ccc"},
+      data:[{xAxis:6000,label:{formatter:"中位",fontSize:10,position:"insideEndTop"}},{yAxis:180,label:{formatter:"",fontSize:10}}]
+    }}]});
+
+// AUC
+make("ch_auc",{tooltip:{trigger:"axis"},legend:{data:["全期复购","30天窗复购"],bottom:0},
+  xAxis:{type:"category",data:D.model.auc_models},
+  yAxis:{type:"value",min:0.4,max:0.8,name:"AUC"},
+  series:[
+    {name:"全期复购",type:"bar",data:D.model.full_period,itemStyle:{color:C.gray}},
+    {name:"30天窗复购",type:"bar",data:D.model.window30,itemStyle:{color:C.blue}}]});
+
+// importance
+make("ch_importance",{tooltip:{trigger:"axis"},grid:{left:90,right:20},
+  xAxis:{type:"value"},
+  yAxis:{type:"category",data:[...D.model.importance].map(i=>i.name).reverse(),axisLabel:{fontSize:11}},
+  series:[{type:"bar",data:[...D.model.importance].map(i=>i.v).reverse(),itemStyle:{color:C.dark}}]});
+
+// top-k
+make("ch_topk",{tooltip:{trigger:"axis"},legend:{data:["LightGBM","逻辑回归","盲投基准"],bottom:0},
+  xAxis:{type:"category",data:D.model.k.map(k=>"Top "+k+"%"),name:"取前X%客户"},
+  yAxis:{type:"value",name:"复购覆盖率 %"},
+  series:[
+    {name:"LightGBM",type:"line",data:D.model.gbm_cov,itemStyle:{color:C.blue},markLine:{data:[{yAxis:10,name:"盲投"}]}},
+    {name:"逻辑回归",type:"line",data:D.model.lr_cov,itemStyle:{color:C.gray}},
+    {name:"盲投基准",type:"line",data:[1,2,3,5,10],itemStyle:{color:"#ddd"},lineStyle:{type:"dashed"}}]});
+
+// budget pie
+make("ch_budget",{tooltip:{trigger:"item"},legend:{bottom:0},
+  series:[{type:"pie",radius:["45%","70%"],
+    data:D.decision.budget.map(b=>({name:b.name,value:b.value})),
+    label:{formatter:"{b}\n{c}%"},
+    itemStyle:{borderRadius:6,borderColor:"#fff",borderWidth:2}}]});
+
+// User AOV distribution
+make("ch_aov",{tooltip:{trigger:"axis"},
+  grid:{left:50,right:20,top:30,bottom:45},
+  xAxis:{type:"category",data:D.user_dist.aov_bins,name:"客单价区间 (R$)",nameLocation:"middle",nameGap:25},
+  yAxis:{type:"value",name:"订单数"},
+  series:[{type:"bar",data:D.user_dist.aov_counts,itemStyle:{color:C.blue},
+    label:{show:true,position:"top",fontSize:10}}]});
+
+// Geographic region pie
+make("ch_geo",{tooltip:{trigger:"item",formatter:"{b}: {c}%"},
+  legend:{bottom:0,itemStyle:{fontSize:10}},
+  series:[{type:"pie",radius:["35%","65%"],
+    data:D.geo.region_pie,
+    label:{formatter:"{b}\n{c}%",fontSize:10},
+    itemStyle:{borderRadius:4,borderColor:"#fff",borderWidth:2}}]});
+
+// Category preference: single vs repeat
+make("ch_cat_pref",{tooltip:{trigger:"axis"},legend:{data:["单次客占比%","复购客占比%"],bottom:0},
+  grid:{left:50,right:20,top:30,bottom:50},
+  xAxis:{type:"category",data:["bed bath","health beauty","computer acc.","sports leisure","furniture"],axisLabel:{fontSize:10}},
+  yAxis:{type:"value",name:"品类订单占比%"},
+  series:[
+    {name:"单次客占比%",type:"bar",data:[12,11,9,8,7],itemStyle:{color:C.gray}},
+    {name:"复购客占比%",type:"bar",data:[15,14,11,7,9],itemStyle:{color:C.blue}}
+  ]});
+
+// segment table
+document.getElementById("segTable").innerHTML = D.decision.segments.map(s=>
+  `<tr><td>${s.name}</td><td>${s.customers.toLocaleString()}</td><td>${s.action}</td><td>${s.share}%</td><td><span class="badge ${s.pri.toLowerCase()}">${s.pri}</span></td></tr>`).join("");
+</script>
+</body>
+</html>
